@@ -24,11 +24,10 @@ def main : IO Unit := do
     let (remoteAddr, socket') ← socket.accept
     let t ← IO.asTask do
       let strSend := 
-        "HTTP/1.1 200 OK" ++
-        "Content-Length:5" ++
-        "\r\n\r\n" ++
-        "Hello" ++
-        "\r\n\r\n"
+        "HTTP/1.1 200 OK\r\n" ++
+        "Content-Length: 5\r\n" ++
+        "\r\n" ++
+        "Hello"
       let bytesSend ← socket'.send strSend.toUTF8
       socket'.close
     IO.println s!"Incoming: {remoteAddr}"
