@@ -2,6 +2,7 @@
 // # Includes
 // ==============================================================================
 
+#include <fcntl.h>
 #include <lean/lean.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -285,7 +286,10 @@ lean_obj_res lean_socket_mk(uint8_t af_obj, uint8_t type_obj, lean_obj_arg w)
     int family = address_family_unbox(af_obj);
     int type = sock_type_unbox(type_obj);
     SOCKET *socket_fd = malloc(sizeof(SOCKET));
+
     *socket_fd = socket(family, type, 0);
+     int ret=fcntl(*socket_fd, F_SETFL, O_NONBLOCK);
+  
     if (ISVALIDSOCKET(*socket_fd))
     {
         return lean_io_result_mk_ok(socket_box(socket_fd));
