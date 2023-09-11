@@ -8,13 +8,12 @@ A toy implementation of socket programming for Lean 4.
 
 ```lean
 import Lake
-open System Lake DSL
+open Lake DSL
 
-package foo where
-  dependencies := #[{
-    name := `socket
-    src := Source.git "https://github.com/xubaiw/lean4-socket.git" "main"
-  }]
+require socket from git "https://github.com/xubaiw/lean4-socket.git"
+
+package «foo» {
+}
 ```
 
 ## Usage
