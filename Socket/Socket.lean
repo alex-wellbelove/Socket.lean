@@ -66,5 +66,9 @@ namespace Socket
 -/
 @[extern "lean_socket_peer"] opaque peer (s : @& Socket) : IO SockAddr
 
+/-- Set blocking mode on the socket. `true` = blocking, `false` = non-blocking. -/
+@[extern "lean_socket_set_blocking"]
+opaque setBlocking (s : @& Socket) (blocking : Bool) : IO Unit
+
 end Socket
 end Socket

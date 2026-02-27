@@ -2,3 +2,4 @@
 **/lean_packages
 .vscode
 result*
+.lake

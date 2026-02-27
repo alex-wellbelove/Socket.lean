@@ -76,6 +76,7 @@ inductive AddressFamily where
   | unspecified
   | inet
   | inet6
+  | unix
   deriving Inhabited
 
 /-- Convert `AddressFamily` to `String`. -/
@@ -84,6 +85,7 @@ instance : ToString AddressFamily where
     | AddressFamily.unspecified => "AF_UNSPEC"
     | AddressFamily.inet => "AF_INET"
     | AddressFamily.inet6 => "AF_INET6"
+    | AddressFamily.unix => "AF_UNIX"
 
 /--
   Enumeration of supported socket types,

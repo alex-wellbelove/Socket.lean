@@ -24,6 +24,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -41,6 +42,9 @@ typedef struct sockaddr_in sockaddr_in;
 typedef struct sockaddr_in6 sockaddr_in6;
 typedef struct sockaddr_storage sockaddr_storage;
 typedef struct addrinfo addrinfo;
+#ifndef _WIN32
+typedef struct sockaddr_un sockaddr_un;
+#endif
 
 /**
  * Group sockaddr and its length together as a external class.
@@ -117,6 +121,10 @@ static int address_family_unbox(uint8_t af)
         return AF_INET;
     case 2:
         return AF_INET6;
+#ifndef _WIN32
+    case 3:
+        return AF_UNIX;
+#endif
     default:
         return AF_UNSPEC;
     }
@@ -369,7 +377,7 @@ lean_obj_res lean_socket_accept(b_lean_obj_arg s, lean_obj_arg w)
 {
     sockaddr_len *sal = malloc(sizeof(sockaddr_len));
     SOCKET *new_fd = malloc(sizeof(SOCKET));
-    sal->address_len = sizeof(sockaddr);
+    sal->address_len = sizeof(sockaddr_storage);
     *new_fd = accept(*socket_unbox(s), (sockaddr *)(&(sal->address)), &(sal->address_len));
     if (ISVALIDSOCKET(*new_fd))
     {
@@ -381,7 +389,6 @@ lean_obj_res lean_socket_accept(b_lean_obj_arg s, lean_obj_arg w)
     }
     else
     {
-        printf("fail\n");
         return lean_io_result_mk_error(get_socket_error());
     }
 }
@@ -493,6 +500,28 @@ lean_obj_res lean_socket_peer(b_lean_obj_arg s, lean_obj_arg w)
     }
 }
 
+/**
+ * opaque Socket.setBlocking (s : @& Socket) (blocking : Bool) : IO Unit
+ */
+lean_obj_res lean_socket_set_blocking(b_lean_obj_arg s, uint8_t blocking, lean_obj_arg w)
+{
+#ifndef _WIN32
+    int fd = *socket_unbox(s);
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) return lean_io_result_mk_error(get_socket_error());
+    if (blocking)
+        flags &= ~O_NONBLOCK;
+    else
+        flags |= O_NONBLOCK;
+    if (fcntl(fd, F_SETFL, flags) == -1)
+        return lean_io_result_mk_error(get_socket_error());
+    return lean_io_result_mk_ok(lean_box(0));
+#else
+    lean_object *details = lean_mk_string("setBlocking is not supported on Windows");
+    return lean_io_result_mk_error(lean_mk_io_user_error(details));
+#endif
+}
+
 // ## SockAddr
 
 /**
@@ -540,6 +569,29 @@ lean_obj_res lean_sockaddr_mk(b_lean_obj_arg h, b_lean_obj_arg p, uint8_t f, uin
     return lean_io_result_mk_ok(sockaddr_len_box(sal));
 }
 
+#ifndef _WIN32
+/**
+ * opaque SockAddr.mkUnix (path : @& String) : IO SockAddr
+ */
+lean_obj_res lean_sockaddr_mk_unix(b_lean_obj_arg p, lean_obj_arg w)
+{
+    const char *path = lean_string_cstr(p);
+    size_t path_len = strlen(path);
+    if (path_len >= sizeof(((sockaddr_un *)0)->sun_path))
+    {
+        lean_object *details = lean_mk_string("Unix socket path too long");
+        return lean_io_result_mk_error(lean_mk_io_user_error(details));
+    }
+    sockaddr_len *sal = malloc(sizeof(sockaddr_len));
+    memset(sal, 0, sizeof(sockaddr_len));
+    sockaddr_un *un = (sockaddr_un *)&(sal->address);
+    un->sun_family = AF_UNIX;
+    strncpy(un->sun_path, path, sizeof(un->sun_path) - 1);
+    sal->address_len = offsetof(struct sockaddr_un, sun_path) + path_len;
+    return lean_io_result_mk_ok(sockaddr_len_box(sal));
+}
+#endif
+
 /**
  * opaque Sock.family (a : @&SockAddr) : Option AddressFamily
  */
@@ -553,6 +605,10 @@ lean_obj_res lean_sockaddr_family(b_lean_obj_arg a, lean_obj_arg w)
         return lean_option_mk_some(lean_box(1));
     case AF_INET6:
         return lean_option_mk_some(lean_box(2));
+#ifndef _WIN32
+    case AF_UNIX:
+        return lean_option_mk_some(lean_box(3));
+#endif
     default:
         return lean_option_mk_none();
     }
@@ -603,6 +659,13 @@ lean_obj_res lean_sockaddr_host(b_lean_obj_arg a, lean_obj_arg w)
         o = lean_alloc_ctor(1, 1, 0);
         lean_ctor_set(o, 0, lean_mk_string(ip6));
     }
+#ifndef _WIN32
+    else if (sa->address.ss_family == AF_UNIX)
+    {
+        o = lean_alloc_ctor(1, 1, 0);
+        lean_ctor_set(o, 0, lean_mk_string(((sockaddr_un *)&(sa->address))->sun_path));
+    }
+#endif
     else
     {
         o = lean_alloc_ctor(0, 0, 0);
