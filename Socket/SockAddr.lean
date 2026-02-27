@@ -16,6 +16,11 @@ opaque mk
 @[extern "lean_sockaddr_mk_unix"]
 opaque mkUnix (path : @& String) : IO SockAddr
 
+/-- Create a [`SockAddr`](##Socket.SockAddr) for an abstract Unix domain socket.
+    The name should NOT include the leading null byte. -/
+@[extern "lean_sockaddr_mk_unix_abstract"]
+opaque mkUnixAbstract (name : @& String) : IO SockAddr
+
 /-- Get family of the [`SockAddr`](##Socket.SockAddr). -/
 @[extern "lean_sockaddr_family"] opaque family (a : @& SockAddr) : Option AddressFamily
 

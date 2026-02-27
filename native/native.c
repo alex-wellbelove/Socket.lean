@@ -590,6 +590,29 @@ lean_obj_res lean_sockaddr_mk_unix(b_lean_obj_arg p, lean_obj_arg w)
     sal->address_len = offsetof(struct sockaddr_un, sun_path) + path_len;
     return lean_io_result_mk_ok(sockaddr_len_box(sal));
 }
+
+/**
+ * opaque SockAddr.mkUnixAbstract (name : @& String) : IO SockAddr
+ * Abstract unix socket: sun_path[0] = '\0', then the name.
+ */
+lean_obj_res lean_sockaddr_mk_unix_abstract(b_lean_obj_arg n, lean_obj_arg w)
+{
+    const char *name = lean_string_cstr(n);
+    size_t name_len = strlen(name);
+    if (name_len + 1 >= sizeof(((sockaddr_un *)0)->sun_path))
+    {
+        lean_object *details = lean_mk_string("Abstract socket name too long");
+        return lean_io_result_mk_error(lean_mk_io_user_error(details));
+    }
+    sockaddr_len *sal = malloc(sizeof(sockaddr_len));
+    memset(sal, 0, sizeof(sockaddr_len));
+    sockaddr_un *un = (sockaddr_un *)&(sal->address);
+    un->sun_family = AF_UNIX;
+    un->sun_path[0] = '\0';
+    memcpy(un->sun_path + 1, name, name_len);
+    sal->address_len = offsetof(struct sockaddr_un, sun_path) + 1 + name_len;
+    return lean_io_result_mk_ok(sockaddr_len_box(sal));
+}
 #endif
 
 /**
