@@ -70,5 +70,9 @@ namespace Socket
 @[extern "lean_socket_set_blocking"]
 opaque setBlocking (s : @& Socket) (blocking : Bool) : IO Unit
 
+/-- Set receive timeout in milliseconds. 0 = no timeout. -/
+@[extern "lean_socket_set_recv_timeout"]
+opaque setRecvTimeout (s : @& Socket) (ms : UInt32) : IO Unit
+
 end Socket
 end Socket

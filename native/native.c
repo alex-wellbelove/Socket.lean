@@ -522,6 +522,25 @@ lean_obj_res lean_socket_set_blocking(b_lean_obj_arg s, uint8_t blocking, lean_o
 #endif
 }
 
+/**
+ * opaque Socket.setRecvTimeout (s : @& Socket) (ms : UInt32) : IO Unit
+ */
+lean_obj_res lean_socket_set_recv_timeout(b_lean_obj_arg s, uint32_t ms, lean_obj_arg w)
+{
+#ifndef _WIN32
+    int fd = *socket_unbox(s);
+    struct timeval tv;
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = (ms % 1000) * 1000;
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1)
+        return lean_io_result_mk_error(get_socket_error());
+    return lean_io_result_mk_ok(lean_box(0));
+#else
+    lean_object *details = lean_mk_string("setRecvTimeout is not supported on Windows");
+    return lean_io_result_mk_error(lean_mk_io_user_error(details));
+#endif
+}
+
 // ## SockAddr
 
 /**
